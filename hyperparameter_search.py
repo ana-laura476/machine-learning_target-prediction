@@ -8,7 +8,7 @@ from joblib import dump
 import pickle
 
 # Load the data
-df = pd.read_csv('input_data.csv')
+df = pd.read_csv('input_data.txt')
 
 # Get the list of targets
 targets = df['target'].unique()
