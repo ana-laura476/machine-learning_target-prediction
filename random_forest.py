@@ -1,9 +1,17 @@
 from sklearn.model_selection import KFold
-import pickle
+import joblib
+from sklearn.metrics import mean_absolute_error, mean_squared_error
+import pandas as pd
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+
+
 
 # Load the best_params dictionary from the previous script
-with open("best_params.pkl", "rb") as f:
-    best_params = pickle.load(f)
+best_params = joblib.load("best_params.joblib")
+# Load the data
+df = pd.read_csv('input_data.csv')
+df['target'] = df['target'].str.extract('(\d+)').astype(int)
 
 
 scores = {}
@@ -26,12 +34,13 @@ for target in best_params.keys():
         model.fit(X_train, y_train)
         y_pred = model.predict(X_test)
         # evaluate the model and store the score
-        score = r2_score(y_test, y_pred)
+        score = r2_score(y_test, y_pred), mean_squared_error(y_test, y_pred), mean_absolute_error(y_test, y_pred)
         scores_for_target.append(score)
     mean_score = sum(scores_for_target) / len(scores_for_target)
     scores[target] = {'Mean R2': mean_score}
+
     # Make predictions on the molecule1_descriptors
-    molecule1_descriptors = pd.read_csv("molecule1_descriptors.csv")
-    X_molecule1 = molecule1_descriptors.iloc[:, :209]
-    y_pred_molecule1 = model.predict(X_molecule1)
+    molecule1_descriptors = pd.read_csv("molecule1_descriptors.txt", sep="\t", header = 0)
+    molecule1_descriptors = df[df.columns[1:]]
+    y_pred_molecule1 = model.predict(molecule1_descriptors)
     pd.DataFrame(y_pred_molecule1).to_csv(f'prediction_for_molecule1_{target}.csv')
