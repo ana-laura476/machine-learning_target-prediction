@@ -8,16 +8,18 @@ from joblib import dump
 # Load the data
 df = pd.read_csv('input_data.csv')
 print(df)
-df = df.astype({'target': 'string'})
 
 # Get the list of targets
-targets = df[('target')].unique()
+targets = df['target'].unique()
+print(targets)
+
 best_params = {}
 
 # Loop over the targets
 for target in targets:
     # Select data for current target
-    data = df[df[str('target')] == target]
+    data = df[df['target'] == target]
+    print(data.head())
     X = data.drop("activity", axis = 1)
     y = data["activity"]
 
