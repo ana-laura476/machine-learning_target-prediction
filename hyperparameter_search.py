@@ -8,6 +8,10 @@ from joblib import dump
 # Load the data
 df = pd.read_csv('input_data.csv')
 print(df)
+df['target'] = df['target'].str.extract('(\d+)').astype(int)
+
+print(df)
+
 
 # Get the list of targets
 targets = df['target'].unique()
@@ -20,6 +24,8 @@ for target in targets:
     # Select data for current target
     data = df[df['target'] == target]
     print(data.head())
+    print(df.info())
+    print(df['activity'].unique())
     X = data.drop("activity", axis = 1)
     y = data["activity"]
 
