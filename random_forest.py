@@ -1,4 +1,4 @@
-from sklearn.model_selection import KFold
+ffrom sklearn.model_selection import KFold
 import joblib
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 import pandas as pd
@@ -15,7 +15,7 @@ df['target'] = df['target'].str.extract('(\d+)').astype(int)
 
 
 scores = {}
-predictions_df = pd.DataFrame(columns=['target', 'predictions'])
+predictions_df = pd.DataFrame(columns=['target', 'predictions', 'R2', 'MSE', 'MAE'])
 
 for target in best_params.keys():
     data = df.query(f'target=={target}')
@@ -42,7 +42,12 @@ for target in best_params.keys():
     molecule1_descriptors = pd.read_csv("molecule1_descriptors.txt", sep="\t", header = 0)
     y_pred_molecule1 = model.predict(molecule1_descriptors)
     # Add the target column and the predictions to the predictions DataFrame
-    predictions_df = predictions_df.append(pd.DataFrame({'target': target, 'predictions': y_pred_molecule1}))
+    predictions_df = pd.DataFrame({'target': target, 'predictions': y_pred_molecule1})
+    target_df.loc[:, 'R2'] = scores[target]['R2']
+    target_df.loc[:, 'MSE'] = scores[target]['MSE']
+    target_df.loc[:, 'MAE'] = scores[target]['MAE']
+    predictions_df = predictions_df.append(target_df)
+
 
 # Write the DataFrame to a single CSV file
 predictions_df.to_csv('predictions.csv', index=False)
