@@ -1,7 +1,7 @@
 import pandas as pd
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import RandomizedSearchCV
-from sklearn.metrics import mean_absolute_error, mean_squared_error
+from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
 from joblib import dump
 
 
@@ -31,13 +31,25 @@ for target in targets:
 
     # Define hyperparameter grid
     param_grid = {'n_estimators': [50, 100, 250],
-                  'max_depth': [3, 5, 10, None],
+                  'max_depth': [5, 10, 15, None],
                   'max_features': ['sqrt', 'log2', 'auto']}
 
     # Instantiate and fit the model
-    rnd_search = RandomizedSearchCV(RandomForestRegressor(), param_distributions=param_grid, n_iter=10, cv=5)
+    rrnd_search = RandomizedSearchCV(RandomForestRegressor(), param_distributions=param_grid, n_iter=10, cv=5, return_train_score=True)
     rnd_search.fit(X, y)
     best_params[target] = rnd_search.best_params_
+    #get the model metrics
+    r2 = rnd_search.cv_results_['mean_test_score']
+    std = rnd_search.cv_results_['std_test_score']
+
+    y_pred = rnd_search.predict(X)
+
+    r2 = r2_score(y, y_pred)
+    y_pred = rnd_search.predict(X)
+    mse = mean_squared_error(y, y_pred)
+    mae = mean_absolute_error(y, y_pred)
+    with open('metrics.txt', 'a') as f:
+        f.write(f'Target: {target}, R2: {r2}, MSE: {mse}, MAE: {mae}\n')
 
 # Save the best_params to a file
 dump(best_params, 'best_params.joblib')
