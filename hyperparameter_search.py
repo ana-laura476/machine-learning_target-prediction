@@ -53,3 +53,5 @@ for target in targets:
 
 # Save the best_params to a file
 dump(best_params, 'best_params.joblib')
+joblib.dump(best_params, "best_params.pkl", compress=True)
+
