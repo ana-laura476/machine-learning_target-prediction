@@ -35,7 +35,7 @@ for target in targets:
                   'max_features': ['sqrt', 'log2', 'auto']}
 
     # Instantiate and fit the model
-    rrnd_search = RandomizedSearchCV(RandomForestRegressor(), param_distributions=param_grid, n_iter=10, cv=5, return_train_score=True)
+    rrnd_search = RandomizedSearchCV(RandomForestRegressor(), param_distributions=param_grid, n_iter=10, cv=10, return_train_score=True)
     rnd_search.fit(X, y)
     best_params[target] = rnd_search.best_params_
     #get the model metrics
