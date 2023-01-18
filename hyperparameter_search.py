@@ -1,7 +1,8 @@
 import pandas as pd
+from joblib import dump
+import joblib
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import RandomizedSearchCV
-from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
 from joblib import dump
 
@@ -35,9 +36,8 @@ for target in targets:
                   'max_depth': [5, 10, 15, None],
                   'max_features': ['sqrt', 'log2', 'auto']}
 
-    skf = StratifiedKFold(n_splits=10, shuffle=True, random_state=42)
     # Instantiate and fit the model
-    rnd_search = RandomizedSearchCV(RandomForestRegressor(), param_distributions=param_grid, n_iter=10, cv=skf, return_train_score=True)
+    rnd_search = RandomizedSearchCV(RandomForestRegressor(), param_distributions=param_grid, n_iter=10, cv=10, return_train_score=True)
     rnd_search.fit(X, y)
     best_params[target] = rnd_search.best_params_
     #get the model metrics
@@ -56,3 +56,4 @@ for target in targets:
 # Save the best_params to a file
 dump(best_params, 'best_params.joblib')
 joblib.dump(best_params, "best_params.pkl", compress=True)
+
