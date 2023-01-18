@@ -47,7 +47,6 @@ for target in targets:
     y_pred = rnd_search.predict(X)
 
     r2 = r2_score(y, y_pred)
-    y_pred = rnd_search.predict(X)
     mse = mean_squared_error(y, y_pred)
     mae = mean_absolute_error(y, y_pred)
     with open('metrics.txt', 'a') as f:
