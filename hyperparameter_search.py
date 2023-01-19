@@ -1,10 +1,10 @@
 import pandas as pd
-from joblib import dump
-import joblib
+import os 
+import numpy as np
+from joblib import dump, Parallel, delayed
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.model_selection import RandomizedSearchCV
+from sklearn.model_selection import RandomizedSearchCV, KFold
 from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
-from joblib import dump
 
 
 # Load the data
@@ -20,6 +20,21 @@ targets = df['target'].unique()
 print(targets)
 
 best_params = {}
+seed = 42
+kfold = KFold(n_splits=10, shuffle=True, random_state=seed)
+
+
+# Number of cores to use for parallel processing
+n_jobs = 6
+def calculate_metrics(model, X, y, train_index, test_index):
+    X_train, X_test = X.iloc[train_index], X.iloc[test_index]
+    y_train, y_test = y.iloc[train_index], y.iloc[test_index]
+    model.fit(X_train, y_train)
+    y_pred = model.predict(X_test)
+    r2 = r2_score(y_test, y_pred)
+    mse = mean_squared_error(y_test, y_pred)
+    mae = mean_absolute_error(y_test, y_pred)
+    return r2, mse, mae
 
 # Loop over the targets
 for target in targets:
@@ -28,31 +43,34 @@ for target in targets:
     print(data.head())
     print(df.info())
     print(df['activity'].unique())
-    X = data.drop("activity", axis = 1)
+    X = data.drop(["activity", 'target', 'molecule'], axis=1)
+    print(len(X))
+    print(X.shape)
     y = data["activity"]
 
     # Define hyperparameter grid
-    param_grid = {'n_estimators': [50, 100, 250],
-                  'max_depth': [5, 10, 15, None],
-                  'max_features': ['sqrt', 'log2', 'auto']}
+    param_grid = {'n_estimators': list(range(10, 150, 10)),
+                  'max_depth': [4,5,6,7,8,9,10],
+                  'max_features': ['log2', 'sqrt', 0.25, 0.5]}
 
     # Instantiate and fit the model
-    rnd_search = RandomizedSearchCV(RandomForestRegressor(), param_distributions=param_grid, n_iter=10, cv=10, return_train_score=True)
+    rnd_search = RandomizedSearchCV(RandomForestRegressor(random_state=seed), param_distributions=param_grid, n_iter=20, cv=kfold, n_jobs=n_jobs)
     rnd_search.fit(X, y)
     best_params[target] = rnd_search.best_params_
-    #get the model metrics
-    r2 = rnd_search.cv_results_['mean_test_score']
-    std = rnd_search.cv_results_['std_test_score']
 
-    y_pred = rnd_search.predict(X)
-
-    r2 = r2_score(y, y_pred)
-    mse = mean_squared_error(y, y_pred)
-    mae = mean_absolute_error(y, y_pred)
+    #get the model metrics and perform 10-fold cross-validaiton and get the predicted values
+    kf = KFold(n_splits=10, shuffle=True, random_state=seed)
+    results = Parallel(n_jobs=n_jobs)(delayed(calculate_metrics)(rnd_search, X, y, train_index, test_index) for train_index, test_index in kf.split(X))
+    r2_values, mse_values, mae_values = zip(*results)
+    r2_mean = np.mean(r2_values)
+    r2_std = np.std(r2_values)
+    mse_mean = np.mean(mse_values)
+    mse_std = np.std(mse_values)
+    mae_mean = np.mean(mae_values)
+    mae_std = np.std(mae_values)
+        
     with open('metrics.txt', 'a') as f:
-        f.write(f'Target: {target}, R2: {r2}, MSE: {mse}, MAE: {mae}\n')
+        f.write(f'Target: {target}, R2: {r2_mean}, R2_std: {r2_std}, MSE: {mse_mean}, MSE_std: {mse_std}, MAE: {mae_mean}, MAE_std: {mae_std}\n')
 
 # Save the best_params to a file
 dump(best_params, 'best_params.joblib')
-joblib.dump(best_params, "best_params.pkl", compress=True)
-
