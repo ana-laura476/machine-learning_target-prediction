@@ -56,7 +56,7 @@ for target in targets:
                   'max_features': ['log2', 'sqrt', 0.25, 0.5]}
 
     # Instantiate and fit the model
-    rnd_search = RandomizedSearchCV(RandomForestRegressor(random_state=seed), param_distributions=param_grid, n_iter=20, cv=kfold, n_jobs=n_jobs)
+    rnd_search = RandomizedSearchCV(RandomForestRegressor(random_state=seed), param_distributions=param_grid, n_iter=20, cv=kfold, random_state=seed, n_jobs=n_jobs)
     rnd_search.fit(X, y)
     best_params[target] = rnd_search.best_params_
     model = rnd_search.best_estimator_
@@ -79,6 +79,10 @@ for target in targets:
         f.write(f'{target}\t{r2_mean}\t{r2_std}\t{mse_mean}\t{mse_std}\t{mae_mean}\t{mae_std}\n')
 # Save the best_params and models to a file
 dump(best_params, 'best_params.joblib')
+
+
+
+
 
 
 
