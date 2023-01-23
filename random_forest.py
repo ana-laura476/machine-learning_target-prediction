@@ -18,6 +18,7 @@ subprocess.run(['python', 'cats.py', 'mols.csv', 'output.txt'])
 
 #initialize variables
 scores = {}
+molecule_dfs = {}
 predictions_df = pd.DataFrame(columns=['target', 'predictions', 'variance'])
 seed = 42
 
@@ -33,23 +34,27 @@ for target in best_params.keys():
 
     # fit the model
     model.fit(X, y)
-    y_pred = model.predict(X)
-    estimators = model.estimators_
-    variance_list = [explained_variance_score(y_pred, est.predict(X)) for est in estimators]
 
-
-
-    # Make predictions on the molecule1_descriptors
-    molecule_descriptors = pd.read_csv("output.txt", sep="\t", header = 0)
-    y_pred_molecule = model.predict(molecule_descriptors)
-
+    variances = []
+    for i, e in enumerate(model.estimators_):
+        y_pred_tree = e.predict(X)
+        variance = np.var(y_pred_tree)
+        variances.append(variance)
+    mean_variance = np.mean(variances)
     min_activity = data['activity'].min()
     max_activity = data['activity'].max()
 
-    # Add the target column and the predictions to the predictions DataFrame
-    predictions_df = predictions_df.append({'target': target, 'predictions': y_pred_molecule, 'variance': variance_list, 'min_activity': min_activity, 'max_activity': max_activity}, ignore_index=True)
+    #Make predictions iterating over the output.txt file
+    with open('output.txt') as f:
+        f.readline()
+        for i, line in enumerate(f):
+            molecule_descriptors = [float(x) for x in line.split()]
+            molecule_descriptors = np.array(molecule_descriptors).reshape(1, -1)
+            y_pred_molecule = model.predict(molecule_descriptors)
+            molecule = f'molecule{i}'
+            if molecule not in molecule_dfs:
+                molecule_dfs[molecule] = pd.DataFrame(columns=['target', 'predictions', 'variance', 'min_activity', 'max_activity'])
+            molecule_dfs[molecule] = molecule_dfs[molecule].append({'target': target, 'predictions': y_pred_molecule, 'variance': np.mean(variances), 'min_activity': min_activity, 'max_activity': max_activity}, ignore_index=True)
 
-
-
-# Write the DataFrame to a single CSV file
-predictions_df.to_csv('predictions.csv', index=False)
+    for molecule in molecule_dfs:
+        molecule_dfs[molecule].to_csv(f'{molecule}_predictions.csv', index=False)
