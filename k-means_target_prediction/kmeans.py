@@ -68,7 +68,6 @@ with open('output.txt') as f:
         molecule_descriptor = np.array(molecule_descriptor).reshape(1, -1)
         molecule_cluster = kmeans.predict(molecule_descriptor)
         assert isinstance(molecule_cluster[1], int), f'molecule_cluster is not an integer, got: {molecule_cluster}'
-        #get distance to new molecule and backgroud noise with dark chemical matter (dcm)
 
         cluster_rows = cluster_map[cluster_map['cluster'] == molecule_cluster[1]]
         for index, row in cluster_rows.iterrows():
