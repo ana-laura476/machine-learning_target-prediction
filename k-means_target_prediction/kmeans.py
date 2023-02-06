@@ -39,15 +39,16 @@ seed=42
 df = pd.read_csv('input_data.csv', delimiter=",")
 X = np.array(df.drop(['target', 'molecule', 'activity'], axis=1))
 X = X.copy(order='C')
+
 print(X)
 print(X.shape)
 #initialize KMeans model 
 print('kmeans ok1')
-
-kmeans = FaissKMeans(n_clusters=4439, max_iter=300, n_init=10)
+n_clusters = int(len(df['molecule'])/100)
+print(f'n_cluster: {n_clusters}')
+kmeans = FaissKMeans(n_clusters=n_clusters, max_iter=300, n_init=10)
 print('kmeans ok2')
 kmeans.fit(X)
-dump(kmeans.joblib)
 
 print('kmeans ok3')
 # find the cluster assignments for the data points
