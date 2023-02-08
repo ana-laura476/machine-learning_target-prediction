@@ -5,7 +5,9 @@ from joblib import dump
 from sklearn.cluster import KMeans
 import faiss
 import subprocess
+import scipy
 from scipy.spatial import distance
+
 
 
 subprocess.run(['python', 'cats.py', 'mols.csv', 'mols2.csv', 'output.txt', 'output2.txt'])
@@ -37,14 +39,21 @@ seed=42
 
 #load input data
 df = pd.read_csv('input_data.csv', delimiter=",")
+molecule = df['molecule']
+
+print(molecule)
+print(molecule.shape)
+target = df['target']
+
+print(target)
+print(target.shape)
 X = np.array(df.drop(['target', 'molecule', 'activity'], axis=1))
 X = X.copy(order='C')
-
 print(X)
 print(X.shape)
 #initialize KMeans model 
 print('kmeans ok1')
-n_clusters = int(len(df['molecule'])/100)
+n_clusters=int(len(molecule)/100)
 print(f'n_cluster: {n_clusters}')
 kmeans = FaissKMeans(n_clusters=n_clusters, max_iter=300, n_init=10)
 print('kmeans ok2')
@@ -52,52 +61,68 @@ kmeans.fit(X)
 
 print('kmeans ok3')
 # find the cluster assignments for the data points
-result = kmeans.predict(X)
-cluster_assignments = result[1].ravel()
+cluster_assignments = kmeans.predict(X)
+cluster_assignments = cluster_assignments.reshape(-1)
+
+print(cluster_assignments)
+print(cluster_assignments.shape)
 
 # Create cluster map dataframe
 cluster_map = pd.DataFrame({'identity': molecule, 'cluster': cluster_assignments, 'target': target})
+X = pd.DataFrame(X)
+
 cluster_map = pd.concat([cluster_map, X], axis=1)
 
 # Save cluster map to file
 cluster_map.to_csv("cluster_map.csv", index=False)
+molecules_dfs = {}
 
 #load the new molecules to predict
 with open('output.txt') as f:
     for i, line in enumerate(f):
         molecule_descriptor = [float(x) for x in line.split()]
         molecule_descriptor = np.array(molecule_descriptor).reshape(1, -1)
+        print(molecule_descriptor[0])
+        print(molecule_descriptor[0].shape)
         molecule_cluster = kmeans.predict(molecule_descriptor)
-        assert isinstance(molecule_cluster[1], int), f'molecule_cluster is not an integer, got: {molecule_cluster}'
+        molecule_cluster = int(molecule_cluster[0])
+        print(f"molecule_cluster is {molecule_cluster}")
+        #get distance to new molecule and backgroud noise with dark chemical matter (dcm)
 
-        cluster_rows = cluster_map[cluster_map['cluster'] == molecule_cluster[1]]
+        cluster_rows = cluster_map[cluster_map['cluster'] == molecule_cluster]
+        print(cluster_rows)
+        print(cluster_rows.shape)
         for index, row in cluster_rows.iterrows():
-            cluster_descriptor = row.drop(['identity', 'cluster', 'target'], axis=1)
-            distance = dist.euclidean(molecule_descriptor[0], cluster_descriptor)
-
+            print(row)
+            iden=row['identity']
+            clus=row['cluster']
+            tar=row['target']
+            cluster_descriptor = np.array(row.drop(['identity', 'cluster', 'target']))
+            print(cluster_descriptor)
+            print(cluster_descriptor.shape)
+            distances = distance.euclidean(molecule_descriptor[0], cluster_descriptor)
             #get backgroud noise with dark chemical matter (dcm)
-            with open('output2.txt') as f:
-                for i, line in enumerate(f):
+            distance_to_cluster_dcm = []
+            with open('output2.txt') as g:
+                for k, line in enumerate(g):
                     dcm_descriptor = [float(x) for x in line.split()]
                     dcm_descriptor = np.array(dcm_descriptor).reshape(1, -1)
-                    distance_to_cluster_dcm = []
-                    distance_dcm = dist.euclidean(dcm_descriptor[0], cluster_descriptor)
-
+                    distance_dcm = distance.euclidean(dcm_descriptor[0], cluster_descriptor)
                     distance_to_cluster_dcm.append(distance_dcm)
-                    mean_distance_dcm=np.mean(distance_to_cluster_dcm)          
-                    std_distance_dcm=np.std(distance_to_cluster_dcm)
-                    #get p-vale for each molecule of the cluster
-                    z_score = (float(distance) - float(mean_distance_dcm)/float(std_distance_dcm))
-                    print(z_score)
-                    p_value = scipy.stats.norm.sf(z_score)
-                    print(p_value)
-
-                    molecules = f'molecules{i}'
-                    if molecules not in molecules_dfs:
-                        molecules_dfs[molecules] = pd.DataFrame(columns=['cluster', 'molecule_within_cluster', 'target', 'distance', 'dcm_mean_distance', 'dcm_std_distance', 'z-score', 'p-value'])
-                    molecules_dfs[molecules] = molecules_df.append({'cluster': molecule_cluster,'molecule_within_cluster': cluster_rows['molecule'], 'target': cluster_rows['target'], 'distance to cluster': distance, 'dcm mean distance': mean_distance_dcm, 'dcm std distance': std_distance_dcm, 'z-score': z_score, 'p-value': p_value}, ignore_index=True)
+                    
+            mean_distance_dcm=np.mean(distance_to_cluster_dcm)          
+            std_distance_dcm=np.std(distance_to_cluster_dcm)
+            #get p-vale for each molecule of the cluster
+            z_score = abs((float(distances) - float(mean_distance_dcm))/float(std_distance_dcm))
+            print(z_score)
+            p_value = scipy.stats.norm.sf(z_score)
+            print(p_value)
+            molecules = f'molecules{i}'
+            if molecules not in molecules_dfs:
+                molecules_dfs[molecules] = pd.DataFrame(columns=['cluster', 'molecule_within_cluster', 'target', 'distance to cluster', 'dcm mean distance', 'dcm std distance', 'z-score', 'p-value'])
+            molecules_dfs[molecules] = molecules_dfs[molecules].append({'cluster': clus,'molecule_within_cluster': iden, 'target': tar, 'distance to cluster': distances, 'dcm mean distance': mean_distance_dcm, 'dcm std distance': std_distance_dcm, 'z-score': z_score, 'p-value': p_value}, ignore_index=True)
          
           
-for molecules in molecule_dfs:
-    molecules_dfs[molecules].to_csv(f'{molecules}_clusters.csv', index=False)
+        for molecules in molecules_dfs:
+            molecules_dfs[molecules].to_csv(f'{molecules}_clusters.csv', index=False)
 
