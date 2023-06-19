@@ -51,21 +51,20 @@ for target in targets:
     y = data["activity"]
 
     # Define hyperparameter grid
-    param_grid = {'n_estimators': list(range(10, 160, 20)),
-                  'depth': [4,6,8],
-                  'learning_rate': [0.1, 0.03, 0.001],
-                  'random_strength': [min(np.sqrt(210)/210,1), 0.1, 0.2]} 
+    param_grid = {'iterations': list(range(10, 160, 20)),
+                  'depth': [4,6,8,10],
+                  'learning_rate': [0.3, 0.1, 0.03, 0.001],
+                  'colsample_bylevel': [0.1, 0.25, 0.5]} 
 
     # Instantiate and fit the model
-    rnd_search = RandomizedSearchCV(CatBoostRegressor(random_state=seed, verbose = 0), param_distributions=param_grid, n_iter=20, cv=kfold, random_state=seed, n_jobs=n_jobs, pre_dispatch=2)
+    rnd_search = RandomizedSearchCV(CatBoostRegressor(random_state=seed, verbose = 0), param_distributions=param_grid, n_iter=20, cv=kfold, random_state=seed, n_jobs=n_jobs, scoring='neg_mean_absolute_error')
     rnd_search.fit(X, y)
     best_params[target] = rnd_search.best_params_
     model = rnd_search.best_estimator_
     dump(model, f'all_models/model_{target}.joblib')
 
     #get the model metrics and perform 10-fold cross-validaiton and get the predicted values
-    kf = KFold(n_splits=10, shuffle=True, random_state=seed)
-    results = Parallel(n_jobs=1)(delayed(calculate_metrics)(rnd_search, X, y, train_index, test_index) for train_index, test_index in kf.split(X))
+    results = Parallel(n_jobs=n_jobs)(delayed(calculate_metrics)(model, X, y, train_index, test_index) for train_index, test_index in kfold.split(X))
     r2_values, mse_values, mae_values = zip(*results)
     r2_mean = np.mean(r2_values)
     r2_std = np.std(r2_values)
@@ -80,3 +79,4 @@ for target in targets:
         f.write(f'{target}\t{r2_mean}\t{r2_std}\t{mse_mean}\t{mse_std}\t{mae_mean}\t{mae_std}\n')
 # Save the best_params and models to a file
 dump(best_params, 'best_params.joblib')
+
