@@ -43,8 +43,6 @@ for target in targets:
     # Select data for current target
     data = df[df['target'] == target]
     print(data.head())
-    print(df.info())
-    print(df['activity'].unique())
     X = data.drop(["activity", 'target', 'molecule'], axis=1)
     print(len(X))
     print(X.shape)
@@ -56,15 +54,14 @@ for target in targets:
                   'algorithm': ['auto', 'ball_tree', 'kd_tree']}
 
     # Instantiate and fit the model
-    rnd_search = RandomizedSearchCV(KNeighborsRegressor(), param_distributions=param_grid, n_iter=20, cv=kfold, random_state=seed, n_jobs=n_jobs)
+    rnd_search = RandomizedSearchCV(KNeighborsRegressor(), param_distributions=param_grid, n_iter=20, cv=kfold, random_state=seed, n_jobs=n_jobs, scoring='neg_mean_absolute_error')
     rnd_search.fit(X, y)
     best_params[target] = rnd_search.best_params_
     model = rnd_search.best_estimator_
     dump(model, f'all_models/model_{target}.joblib')
 
     #get the model metrics and perform 10-fold cross-validaiton and get the predicted values
-    kf = KFold(n_splits=10, shuffle=True, random_state=seed)
-    results = Parallel(n_jobs=n_jobs)(delayed(calculate_metrics)(rnd_search, X, y, train_index, test_index) for train_index, test_index in kf.split(X))
+    results = Parallel(n_jobs=n_jobs)(delayed(calculate_metrics)(model, X, y, train_index, test_index) for train_index, test_index in kfold.split(X))
     r2_values, mse_values, mae_values = zip(*results)
     r2_mean = np.mean(r2_values)
     r2_std = np.std(r2_values)
