@@ -31,6 +31,7 @@ for target in best_params.keys():
     data = df.query(f'target=={target}')
     X = data.drop(["activity",'target', 'molecule'], axis=1)
     print(X.shape)
+    X=X.values
     y = data["activity"]
 
     # Initialize the model with the best hyperparameters for the current target
