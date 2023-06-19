@@ -7,7 +7,8 @@ from sklearn.model_selection import KFold
 import subprocess
 import scipy
 import scipy.stats as stats
-import scipy.spatial.distance as dist
+from scipy.spatial import distance
+
 
 
 # Load the best_params dictionary from the previous script
@@ -30,6 +31,7 @@ for target in best_params.keys():
     #split data by target
     data = df.query(f'target=={target}')
     X = data.drop(["activity",'target', 'molecule'], axis=1)
+    X=X.values
     y = data["activity"]
 
     # Initialize the model with the best hyperparameters for the current target
@@ -60,17 +62,19 @@ for target in best_params.keys():
         for i, line in enumerate(f):
             molecule_descriptors = [float(x) for x in line.split()]
             molecule_descriptors = np.array(molecule_descriptors).reshape(1, -1)
+
+            # Find the nearest neighbor to the current molecule and extract its feature descriptors
+            nearest_neighbor_index = model.kneighbors(molecule_descriptors, return_distance=False)[0]
+            nearest_neighbor_descriptors = X[nearest_neighbor_index[0], :]
+
             y_pred_molecule = float(model.predict(molecule_descriptors))
             z_score = ((y_pred_molecule - mean_dcm)/std_dcm)
             print(z_score)
             p_value = scipy.stats.norm.sf(z_score)
             print(p_value)
-            # Make predictions and find the nearest neighbors
-            distance = model.kneighbors(molecule_descriptors)
-            # Extract the nearest neighbor
-            nearest_neighbor = distance[1][0][0]
             # Calculate the Euclidean distance between molecule_descriptors and the nearest neighbor
-            nearest_neighbor_distance = dist.euclidean(molecule_descriptors, nearest_neighbor)
+            nearest_neighbor_distance = distance.euclidean(molecule_descriptors, nearest_neighbor_descriptors)
+
             molecule = f'molecule{i}'
             if molecule not in molecule_dfs:
                molecule_dfs[molecule] = pd.DataFrame(columns=['target','distance', 'predictions', 'dcm mean prediction', 'dcm std prediction', 'z-score', 'p-value', 'min_activity', 'max_activity'])
@@ -79,3 +83,4 @@ for target in best_params.keys():
 
     for molecule in molecule_dfs:
         molecule_dfs[molecule].to_csv(f'{molecule}_predictions.csv', index=False)
+
