@@ -6,5 +6,11 @@
 * each folder contains the scripts used to assess predictive performance, for each algorithm
 * ac_pred contains the pretrained BERT model and specific environment used
 * for chemprop usage:
-** Without rdkit features: chemprop_train --data_path /dir/data.csv --dataset_type regression --split_type cv --num_folds 10 --save_dir dir/target1075094_checkpoints --extra_metrics r2 mae mse
-** With rdkit features: chemprop_train --data_path /dir/data.csv --dataset_type regression --features_generator rdkit_2d_normalized --no_features_scaling --split_type cv --num_folds 10 --save_dir dir/target1075094_checkpoints --extra_metrics r2 mae mse
+  * **Without RDKit features:**
+    ```bash
+    chemprop_train --data_path /dir/data.csv --dataset_type regression --split_type cv --num_folds 10 --save_dir dir/target1075094_checkpoints --extra_metrics r2 mae mse
+    ```
+  * **With RDKit features:**
+    ```bash
+    chemprop_train --data_path /dir/data.csv --dataset_type regression --features_generator rdkit_2d_normalized --no_features_scaling --split_type cv --num_folds 10 --save_dir dir/target1075094_checkpoints --extra_metrics r2 mae mse
+    ```
